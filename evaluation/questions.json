@@ -1,0 +1,14 @@
+[
+ {"id":"q1","question":"What is the Transformer architecture based on, and does it use recurrence?","expected_doc":"attention","keywords_any":["attention","recurrence","recurrent"]},
+ {"id":"q2","question":"How many parallel attention heads does the base Transformer model use?","expected_doc":"attention","keywords_any":["8","eight","heads"]},
+ {"id":"q3","question":"What is retrieval-augmented generation and which two kinds of memory does it combine?","expected_doc":"rag","keywords_any":["parametric","non-parametric"]},
+ {"id":"q4","question":"What is used as the non-parametric memory in RAG?","expected_doc":"rag","keywords_any":["wikipedia","dense","index"]},
+ {"id":"q5","question":"What pre-training objectives does BERT use?","expected_doc":"bert.pdf","keywords_any":["masked","next sentence"]},
+ {"id":"q6","question":"How does Sentence-BERT produce fixed-size sentence embeddings?","expected_doc":"sentence_bert","keywords_any":["siamese","pooling","triplet"]},
+ {"id":"q7","question":"How does Sentence-BERT reduce the time needed to find the most similar sentence pair compared to BERT?","expected_doc":"sentence_bert","keywords_any":["hours","seconds","cosine"]},
+ {"id":"q8","question":"How does ReAct combine reasoning and acting in language models?","expected_doc":"react","keywords_any":["reasoning","acting","trace"]},
+ {"id":"q9","question":"What are reflection tokens in Self-RAG and what do they control?","expected_doc":"self_rag","keywords_any":["reflection","retrieve","critique"]},
+ {"id":"q10","question":"How does language model performance change with the position of relevant information in a long context?","expected_doc":"lost_in_the_middle","keywords_any":["middle","position","beginning"]},
+ {"id":"q11","question":"How does Toolformer decide which API calls to keep?","expected_doc":"toolformer","keywords_any":["loss","api","filter"]},
+ {"id":"q12","question":"What GPU techniques does the billion-scale similarity search paper use for k-selection?","expected_doc":"faiss","keywords_any":["k-selection","gpu","warp","register"]}
+]

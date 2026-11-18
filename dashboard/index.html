@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocIntel Agents · Evaluation Dashboard</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--fg:#1d1d1b;--mut:#6b6b66;--bd:#e3e3de;--ok:#1a7f4b;--bad:#b3261e;--warn:#9a6700;--acc:#2f5fd0}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--fg:#ececea;--mut:#9a9a94;--bd:#33332f;--ok:#4cc38a;--bad:#ff8a80;--warn:#e3b341;--acc:#7aa2ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0}h2{font-size:16px;margin:28px 0 10px}.mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:24px}.kpi span{color:var(--mut);font-size:12px}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid var(--bd)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;min-width:70px}.bar i{display:block;height:100%;background:var(--acc)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);vertical-align:top}th{color:var(--mut);font-weight:500;font-size:12px}
+tr.row{cursor:pointer}tr.row:hover{background:color-mix(in srgb,var(--acc) 6%,transparent)}
+.detail{padding:12px 4px;font-size:14px}.cite{border-left:3px solid var(--bd);padding:4px 10px;margin:6px 0;color:var(--mut);font-size:13px}
+.claim{margin:4px 0}.trace{font:12px ui-monospace,monospace;color:var(--mut)}
+input,button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}
+button{background:var(--acc);color:#fff;border:0;cursor:pointer}input{width:100%}.row2{display:flex;gap:8px;margin:6px 0}
+</style>
+</head>
+<body><main>
+<h1>DocIntel Agents</h1>
+<div class="mut" id="meta">Loading evaluation results…</div>
+<div class="grid" id="kpis"></div>
+
+<h2>Ask the live system</h2>
+<div class="card">
+  <div class="mut">Needs the FastAPI backend (Docker). Paste its URL once; it is remembered in this browser.</div>
+  <div class="row2"><input id="api" placeholder="https://your-backend.example.com"></div>
+  <div class="row2"><input id="q" placeholder="Ask a question about the papers…"><button id="go">Ask</button></div>
+  <div id="live"></div>
+</div>
+
+<h2>Evaluation results</h2>
+<div class="card tw"><table>
+<thead><tr><th>ID</th><th>Question</th><th>Retrieval</th><th>Keywords</th><th>Grounded</th><th>Status</th><th>Latency</th></tr></thead>
+<tbody id="rows"></tbody></table></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=x=>Math.round(x*100)+'%';
+const flag=b=>b?'<span class="ok">✓</span>':'<span class="bad">✗</span>';
+function detail(r){
+  const cl=(r.verification.claims||[]).map(c=>`<div class="claim">${flag(c.supported)} ${esc(c.claim)} <span class="mut">[${c.refs.join(',')}] sim ${c.similarity} · overlap ${c.overlap}</span></div>`).join('');
+  const ci=r.citations.map(c=>`<div class="cite"><b>[${c.ref}] ${esc(c.doc)} p.${c.page}</b> · score ${c.score}<br>${esc(c.text.slice(0,280))}…</div>`).join('');
+  return `<div class="detail"><b>Answer</b><p>${esc(r.answer)}</p><b>Claim verification</b>${cl}
+  <p class="mut">Sub-queries: ${r.sub_queries.map(esc).join(' | ')} · attempts: ${r.attempts}</p>
+  <b>Evidence</b>${ci}<div class="trace">${r.trace.map(esc).join('<br>')}</div></div>`;
+}
+function stat(r){const c=r.status==='verified'?'ok':'warn';return `<span class="pill ${c}">${r.status}</span>`}
+async function load(){
+  try{
+    const d=await (await fetch('data/results.json',{cache:'no-store'})).json();
+    const s=d.summary;
+    $('#meta').textContent=`${d.documents.length} documents · ${d.chunks} chunks · embedder ${d.embedder} · mode ${d.mode} · generated ${d.generated_at}`;
+    const k=[['Retrieval hit@k',pct(s.retrieval_hit_rate)],['Top-1 doc hit',pct(s.top1_hit_rate)],['Keyword coverage',pct(s.keyword_hit_rate)],
+      ['Avg grounded',pct(s.avg_grounded_ratio)],['Verified answers',pct(s.verified_rate)],['Retry rate',pct(s.retry_rate)],['Latency p50',s.latency_p50_s+'s']];
+    $('#kpis').innerHTML=k.map(([l,v])=>`<div class="card kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+    $('#rows').innerHTML=d.results.map((r,i)=>`<tr class="row" data-i="${i}"><td>${r.id}</td><td>${esc(r.question)}</td><td>${flag(r.retrieval_hit)}${r.top1_hit?' <span class="mut">top-1</span>':''}</td><td>${flag(r.keyword_hit)}</td>
+      <td><div class="bar"><i style="width:${pct(r.grounded_ratio)}"></i></div><span class="mut">${pct(r.grounded_ratio)}</span></td><td>${stat(r)}</td><td>${r.latency_s}s</td></tr>
+      <tr hidden id="d${i}"><td colspan="7">${detail(r)}</td></tr>`).join('');
+    document.querySelectorAll('tr.row').forEach(tr=>tr.onclick=()=>{const e=$('#d'+tr.dataset.i);e.hidden=!e.hidden});
+  }catch(e){$('#meta').textContent='No results yet. Run: make eval  (writes dashboard/data/results.json), then commit it.'}
+}
+try{$('#api').value=localStorage.getItem('api')||''}catch(e){}
+$('#go').onclick=async()=>{
+  const base=$('#api').value.trim().replace(/\/$/,''),q=$('#q').value.trim();
+  if(!base||!q){$('#live').innerHTML='<p class="warn">Enter a backend URL and a question.</p>';return}
+  try{localStorage.setItem('api',base)}catch(e){}
+  $('#live').innerHTML='<p class="mut">Thinking…</p>';
+  try{
+    const r=await fetch(base+'/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    if(!r.ok)throw new Error(r.status);
+    $('#live').innerHTML=detail(await r.json());
+  }catch(e){$('#live').innerHTML='<p class="bad">Request failed ('+esc(e.message)+'). Check the URL and CORS.</p>'}
+};
+load();
+</script>
+</body></html>

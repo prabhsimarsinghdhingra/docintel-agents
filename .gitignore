@@ -1,0 +1,7 @@
+__pycache__/
+.venv/
+.env
+data/docs/*.pdf
+data/index/
+.pytest_cache/
+.ruff_cache/
